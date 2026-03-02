@@ -6,7 +6,7 @@ on:
       document_type:
         description: '公文类型'
         required: true
-        default: ${{ vars.DEFAULT_DOCUMENT_TYPE || '通知' }}
+        default: '通知'
         type: choice
         options:
           - 通知
@@ -17,7 +17,7 @@ on:
       document_title:
         description: '公文标题'
         required: true
-        default: ${{ vars.DEFAULT_DOCUMENT_TITLE || '关于XX工作的通知' }}
+        default: '关于XX工作的通知'
       document_subject:
         description: '公文事由'
         required: true
@@ -25,15 +25,15 @@ on:
       document_sender:
         description: '发文单位'
         required: true
-        default: ${{ vars.DEFAULT_DOCUMENT_SENDER || '公司办公室' }}
+        default: '公司办公室'
       document_receiver:
         description: '主送机关'
         required: true
-        default: ${{ vars.DEFAULT_DOCUMENT_RECEIVER || '各部门、各子公司' }}
+        default: '各部门、各子公司'
       input_file:
         description: '输入数据文件'
         required: false
-        default: ${{ vars.DEFAULT_INPUT_FILE || 'input_data.txt' }}
+        default: 'input_data.txt'
       extra_instructions:
         description: '额外生成指令（可选）'
         required: false
@@ -59,25 +59,25 @@ jobs:
           
       - name: Generate Document
         env:
-          # Secrets - 敏感信息
+          # 🔑 Secrets（需在仓库设置中配置）
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECEIVERS: ${{ secrets.EMAIL_RECEIVERS }}
           
-          # Variables - 从工作流输入获取，有默认值
+          # 📝 工作流输入参数（用户填写的值）
           DOCUMENT_TYPE: ${{ github.event.inputs.document_type }}
           DOCUMENT_TITLE: ${{ github.event.inputs.document_title }}
           DOCUMENT_SUBJECT: ${{ github.event.inputs.document_subject }}
           DOCUMENT_SENDER: ${{ github.event.inputs.document_sender }}
           DOCUMENT_RECEIVER: ${{ github.event.inputs.document_receiver }}
           INPUT_DATA_FILE: ${{ github.event.inputs.input_file }}
+          EXTRA_INSTRUCTIONS: ${{ github.event.inputs.extra_instructions }}
           
-          # 固定配置
+          # ⚙️ 固定配置（无需修改）
           GEMINI_MODEL: 'gemini-2.5-flash'
           DOCUMENT_URGENCY: '普通'
           DOCUMENT_SECURITY: '无'
-          
         run: |
           echo "开始生成公文..."
           echo "公文类型: $DOCUMENT_TYPE"
@@ -85,22 +85,23 @@ jobs:
           echo "发文单位: $DOCUMENT_SENDER"
           echo "主送机关: $DOCUMENT_RECEIVER"
           echo "输入文件: $INPUT_DATA_FILE"
-          
+          echo "额外指令: $EXTRA_INSTRUCTIONS"
+
           # 检查输入文件是否存在
           if [ ! -f "$INPUT_DATA_FILE" ]; then
             echo "错误: 输入文件 $INPUT_DATA_FILE 不存在"
             echo "请创建 $INPUT_DATA_FILE 文件或指定正确的文件名"
             exit 1
           fi
-          
+
           python main.py
-          
+
       - name: Upload Generated Document
         uses: actions/upload-artifact@v4
         with:
           name: generated-document
           path: generated_document_*.html
-          
+
       - name: Send Success Notification
         if: success()
         run: |
