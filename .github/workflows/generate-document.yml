@@ -52,6 +52,41 @@ jobs:
         with:
           python-version: '3.11'
           
+      # 测试 Gemini API 连通性
+      - name: Test Gemini API Connectivity
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          echo "测试 Gemini API 连通性..."
+          # 使用 curl 测试 API 连通性
+          response_code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $GEMINI_API_KEY" \
+            " https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent " \
+            -d '{
+              "contents": [{
+                "parts": [{
+                  "text": "Hello"
+                }]
+              }]
+            }')
+          
+          if [ "$response_code" = "200" ]; then
+            echo "✅ Gemini API 连通性测试成功"
+          elif [ "$response_code" = "401" ]; then
+            echo "❌ Gemini API 密钥无效 (401 Unauthorized)"
+            exit 1
+          elif [ "$response_code" = "403" ]; then
+            echo "❌ Gemini API 权限不足 (403 Forbidden)"
+            exit 1
+          elif [ "$response_code" = "429" ]; then
+            echo "⚠️ Gemini API 请求超限 (429 Too Many Requests)"
+          else
+            echo "❌ Gemini API 连通性测试失败，HTTP 状态码: $response_code"
+            echo "提示：这可能是网络问题或 API 服务暂时不可用"
+            exit 1
+          fi
+          
       - name: Install Dependencies
         run: |
           pip install openai
