@@ -1,0 +1,91 @@
+name: Generate Official Document
+
+on:
+  workflow_dispatch:
+    inputs:
+      document_type:
+        description: '公文类型'
+        required: true
+        default: '通知'
+        type: choice
+        options:
+          - 通知
+          - 报告
+          - 请示
+          - 函
+          - 纪要
+      document_title:
+        description: '公文标题'
+        required: true
+        default: '关于安全生产检查工作的通知'
+      document_subject:
+        description: '公文事由'
+        required: true
+        default: '安全生产检查工作安排'
+      document_sender:
+        description: '发文单位'
+        required: true
+        default: '公司办公室'
+      document_receiver:
+        description: '主送机关'
+        required: true
+        default: '各部门、各子公司'
+      extra_instructions:
+        description: '额外生成指令（可选）'
+        required: false
+        default: ''
+
+jobs:
+  generate-document:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install Dependencies
+        run: |
+          pip install openai
+          pip install markdown
+          
+      - name: Generate Document
+        env:
+          # AI配置
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: 'gemini-2.5-flash'
+          
+          # 公文配置（从工作流输入获取）
+          DOCUMENT_TYPE: ${{ github.event.inputs.document_type }}
+          DOCUMENT_TITLE: ${{ github.event.inputs.document_title }}
+          DOCUMENT_SUBJECT: ${{ github.event.inputs.document_subject }}
+          DOCUMENT_SENDER: ${{ github.event.inputs.document_sender }}
+          DOCUMENT_RECEIVER: ${{ github.event.inputs.document_receiver }}
+          INPUT_DATA_FILE: 'input_data.txt'
+          
+          # 邮件配置
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVERS: ${{ secrets.EMAIL_RECEIVERS }}
+          
+        run: |
+          echo "开始生成公文..."
+          echo "公文类型: $DOCUMENT_TYPE"
+          echo "公文标题: $DOCUMENT_TITLE"
+          python main.py
+          
+      - name: Upload Generated Document
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-document
+          path: generated_document_*.html
+          
+      - name: Send Success Notification
+        if: success()
+        run: |
+          echo "✅ 公文生成流程完成！"
+          echo "公文已发送到指定邮箱，并已保存为artifact。"
